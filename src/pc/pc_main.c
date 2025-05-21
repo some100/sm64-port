@@ -101,18 +101,9 @@ void produce_one_frame(void) {
 
 #ifdef TARGET_WEB
 static void em_main_loop(void) {
-}
-
-static void request_anim_frame(void (*func)(double time)) {
-    EM_ASM(requestAnimationFrame(function(time) {
-        dynCall("vd", $0, [time]);
-    }), func);
-}
-
-static void on_anim_frame(double time) {
     static double target_time;
 
-    time *= 0.03; // milliseconds to frame count (33.333 ms -> 1)
+    double time = emscripten_get_now() * 0.03; // milliseconds to frame count (33.333 ms -> 1)
 
     if (time >= target_time + 10.0) {
         // We are lagging 10 frames behind, probably due to coming back after inactivity,
@@ -127,8 +118,6 @@ static void on_anim_frame(double time) {
             target_time = target_time + 1.0;
         }
     }
-
-    request_anim_frame(on_anim_frame);
 }
 #endif
 
@@ -155,7 +144,6 @@ void main_func(void) {
 
 #ifdef TARGET_WEB
     emscripten_set_main_loop(em_main_loop, 0, 0);
-    request_anim_frame(on_anim_frame);
 #endif
 
 #if defined(ENABLE_DX12)

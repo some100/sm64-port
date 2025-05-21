@@ -169,9 +169,6 @@ endif
 # OPT_FLAGS - for ports
 ifeq ($(TARGET_N64),0)
   OPT_FLAGS := -O2
-  ifeq ($(TARGET_WEB),1)
-    OPT_FLAGS += -g4 --source-map-base http://localhost:8080/
-  endif
 endif
 
 
@@ -462,6 +459,7 @@ ifneq ($(TARGET_WEB),1)
   CXX := g++
 else
   CC := emcc
+  CXX := em++
 endif
 ifeq ($(CXX_FILES),"")
   LD := $(CC)
@@ -483,7 +481,7 @@ ifeq ($(TARGET_LINUX),1)
 endif
 ifeq ($(TARGET_WEB),1)
   PLATFORM_CFLAGS  := -DTARGET_WEB
-  PLATFORM_LDFLAGS := -lm -no-pie -s TOTAL_MEMORY=20MB -g4 --source-map-base http://localhost:8080/ -s "EXTRA_EXPORTED_RUNTIME_METHODS=['callMain']"
+  PLATFORM_LDFLAGS := -lm -no-pie -s TOTAL_MEMORY=20MB -O2
 endif
 
 PLATFORM_CFLAGS += -DNO_SEGMENTED_MEMORY -DUSE_SYSTEM_MALLOC
@@ -501,8 +499,8 @@ ifeq ($(ENABLE_OPENGL),1)
     GFX_LDFLAGS += -lGL $(shell sdl2-config --libs) -lX11 -lXrandr
   endif
   ifeq ($(TARGET_WEB),1)
-    GFX_CFLAGS  += -s USE_SDL=2
-    GFX_LDFLAGS += -lGL -lSDL2
+    GFX_CFLAGS  += --use-port=sdl2
+    GFX_LDFLAGS += --use-port=sdl2
   endif
 endif
 ifeq ($(ENABLE_DX11),1)
@@ -517,7 +515,11 @@ endif
 GFX_CFLAGS += -DWIDESCREEN
 
 CC_CHECK := $(CC) -fsyntax-only -fsigned-char -Wall -Wextra -Wno-format-security -D_LANGUAGE_C $(DEF_INC_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS)
-CFLAGS := $(OPT_FLAGS) -D_LANGUAGE_C $(DEF_INC_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS) -fno-strict-aliasing -fwrapv -march=native
+CFLAGS := $(OPT_FLAGS) -D_LANGUAGE_C $(DEF_INC_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS) -fno-strict-aliasing -fwrapv
+
+ifeq ($(TARGET_WEB),0)
+  CFLAGS += -march=native
+endif
 
 ASFLAGS := -I include -I $(BUILD_DIR) $(foreach d,$(DEFINES),--defsym $(d))
 
