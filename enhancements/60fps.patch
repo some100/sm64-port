@@ -1959,10 +1959,18 @@ index f6638c7..7cfcdd6 100644
      Uint32 elapsed = SDL_GetTicks() - last_time;
  
 diff --git a/src/pc/pc_main.c b/src/pc/pc_main.c
-index f134fd1..9295fee 100644
+index f134fd1..36f69ba 100644
 --- a/src/pc/pc_main.c
 +++ b/src/pc/pc_main.c
-@@ -78,6 +78,25 @@ void exec_display_list(struct SPTask *spTask) {
+@@ -59,6 +59,7 @@ void set_vblank_handler(UNUSED s32 index, UNUSED struct VblankHandler *handler,
+ }
+ 
+ static uint8_t inited = 0;
++static uint8_t ctr = 0;
+ 
+ #include "game/game_init.h" // for gGlobalTimer
+ void exec_display_list(struct SPTask *spTask) {
+@@ -78,6 +79,25 @@ void exec_display_list(struct SPTask *spTask) {
  #define SAMPLES_LOW 528
  #endif
  
@@ -1988,11 +1996,17 @@ index f134fd1..9295fee 100644
  void produce_one_frame(void) {
      gfx_start_frame();
      game_loop_one_iteration();
-@@ -97,6 +116,11 @@ void produce_one_frame(void) {
+@@ -97,26 +117,31 @@ void produce_one_frame(void) {
      audio_api->play((u8 *)audio_buffer, 2 * num_audio_samples * 4);
      
      gfx_end_frame();
 +
++#ifndef TARGET_WEB
++    interpolate_frame(); // if its not web, just call it in a loop and it'll figure itself out cause of sdl swap interval
++#endif
++}
++
++void interpolate_frame(void) {
 +    gfx_start_frame();
 +    patch_interpolations();
 +    exec_display_list(gGfxSPTask);
@@ -2000,3 +2014,29 @@ index f134fd1..9295fee 100644
  }
  
  #ifdef TARGET_WEB
+ static void em_main_loop(void) {
+     static double target_time;
+ 
+-    double time = emscripten_get_now() * 0.03; // milliseconds to frame count (33.333 ms -> 1)
+-
+-    if (time >= target_time + 10.0) {
+-        // We are lagging 10 frames behind, probably due to coming back after inactivity,
+-        // so reset, with a small margin to avoid potential jitter later.
+-        target_time = time - 0.010;
+-    }
++    double time = emscripten_get_now() * 0.06; // milliseconds to frame count (16.666 ms -> 1)
+ 
+-    for (int i = 0; i < 2; i++) {
+-        // If refresh rate is 15 Hz or something we might need to generate two frames
+-        if (time >= target_time) {
++    if (time >= target_time) {
++        if (++ctr & 1)
+             produce_one_frame();
+-            target_time = target_time + 1.0;
+-        }
++        else
++            interpolate_frame();
++        target_time = target_time + 1.0;
+     }
+ }
+ #endif
